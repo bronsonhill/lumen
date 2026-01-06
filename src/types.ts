@@ -7,3 +7,10 @@ export interface LogEntry {
     tool?: string;
     status?: 'active' | 'success' | 'failure';
 }
+
+export interface SatellitePosition {
+    tool: string;
+    x: number;
+    y: number;
+    isActive: boolean;
+}

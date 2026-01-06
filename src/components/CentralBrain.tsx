@@ -21,7 +21,7 @@ export const CentralBrain: React.FC<CentralBrainProps & { radius: number }> = ({
     const scale = isActive ? pulse : 1;
 
     // Dim glow if waiting (Grey) to avoid "active" look
-    const glowRadius = isWaiting ? '15px' : '50px';
+    const glowRadius = isWaiting ? '15px' : '30px';
     const glow = isActive ? `0 0 ${glowRadius} ${baseColor}` : 'none';
 
     return (

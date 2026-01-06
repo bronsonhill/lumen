@@ -12,22 +12,7 @@ export const useNodePositions = (frame: number, tools: string[], currentLog: Log
     const centerY = layout.CENTER_Y;
     const radius = layout.RADIUS;
 
-    // Helper to get coordinates for a node (Stable)
-    const getStableNodeCoords = (nodeName: string, activeTools: string[]) => {
-        if (nodeName === 'BRAIN') return { x: centerX, y: centerY };
-        if (nodeName === 'USER') return { x: layout.USER_NODE_X, y: layout.USER_NODE_Y };
-        if (nodeName.startsWith('SAT-')) {
-            const toolName = nodeName.replace('SAT-', '');
-            const index = activeTools.indexOf(toolName);
-            if (index === -1) return { x: centerX, y: centerY };
-            const angle = (2 * Math.PI * index) / activeTools.length;
-            return {
-                x: centerX + radius * Math.cos(angle),
-                y: centerY + radius * Math.sin(angle)
-            };
-        }
-        return { x: centerX, y: centerY };
-    };
+
 
     // Apply noise to Brain Position
     const brainNoiseX = noise2D('brain-x', frame * 0.003, 0) * 30; // 30 could also be scaled? Let's leave for now.
@@ -54,7 +39,6 @@ export const useNodePositions = (frame: number, tools: string[], currentLog: Log
         centerY,
         brainX,
         brainY,
-        satellitePositions,
-        getStableNodeCoords
+        satellitePositions
     };
 };

@@ -12,6 +12,9 @@ import { getConfig, getTransitDuration } from '../config';
 import { useBubbleSegments } from '../hooks/useBubbleSegments';
 import { useNodePositions } from '../hooks/useNodePositions';
 import { useAgentAnimation } from '../hooks/useAgentAnimation';
+import { usePacketCoordinates } from '../hooks/usePacketCoordinates';
+import { useLogBubblePosition } from '../hooks/useLogBubblePosition';
+import { getStableNodeCoords } from '../helpers/layoutHelpers';
 
 const logs = logsData as LogEntry[];
 
@@ -34,17 +37,14 @@ export const AgentSystem: React.FC = () => {
         []
     );
 
-    // 1. Calculate Agent Positions
-    // We pass null for currentLog initially to get base positions
-    const {
-        brainX,
-        brainY,
-        satellitePositions,
-        getStableNodeCoords
-    } = useNodePositions(frame, tools, null);
-
     // 1. Get Segments (Static based on Logs and Tools)
-    const bubbleSegments = useBubbleSegments(logs, tools, getStableNodeCoords);
+    // Pass layout explicitly or wrap getStableNodeCoords? 
+    // useBubbleSegments needs a function (nodeName, tools) => {x,y}
+    // We can create a bound function here since 'layout' is stable for this frame
+    const boundGetStableCoords = (node: string, t: string[]) => getStableNodeCoords(node, t, layout);
+
+    // Pass the bound function
+    const bubbleSegments = useBubbleSegments(logs, tools, boundGetStableCoords);
 
     // 2. Determine Logic for Active States and Packet Coordinates
     const {
@@ -68,70 +68,67 @@ export const AgentSystem: React.FC = () => {
     } = useNodePositions(frame, tools, currentLog);
 
     // 4. Calculate Packet Coordinates
-    const activeSatellite = currentLog ? finalSatellitePositions.find(s => s.tool === currentLog?.tool) : undefined;
-    let packetStartX = 0;
-    let packetStartY = 0;
-    let packetEndX = 0;
-    let packetEndY = 0;
+    // 4. Calculate Packet Coordinates
+    const {
+        packetStartX,
+        packetStartY,
+        packetEndX,
+        packetEndY,
+        activeSatellite
+    } = usePacketCoordinates({
+        currentLog,
+        finalSatellitePositions,
+        brainX: finalBrainX,
+        brainY: finalBrainY,
+        layout,
+        isToolCall,
+        isToolResult,
+        isTrigger,
+        isResponse
+    });
 
-    if (activeSatellite) {
-        const dx = activeSatellite.x - finalBrainX;
-        const dy = activeSatellite.y - finalBrainY;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        const unitX = dx / distance;
-        const unitY = dy / distance;
+    // 5. Determine Packet Visualization State
+    let packetColor = '';
+    let shouldShowPacket = false;
 
-        const brainEdgeX = finalBrainX + unitX * layout.BRAIN_RADIUS;
-        const brainEdgeY = finalBrainY + unitY * layout.BRAIN_RADIUS;
-        const satEdgeX = activeSatellite.x - unitX * layout.SATELLITE_RADIUS;
-        const satEdgeY = activeSatellite.y - unitY * layout.SATELLITE_RADIUS;
-
-        if (isToolCall) {
-            packetStartX = brainEdgeX;
-            packetStartY = brainEdgeY;
-            packetEndX = satEdgeX;
-            packetEndY = satEdgeY;
-        } else if (isToolResult) {
-            packetStartX = satEdgeX;
-            packetStartY = satEdgeY;
-            packetEndX = brainEdgeX;
-            packetEndY = brainEdgeY;
+    if (!hasArrived) {
+        if (isToolCall && activeSatellite) {
+            packetColor = ACTION_COLORS.TOOL_CALL;
+            shouldShowPacket = true;
+        } else if (isToolResult && activeSatellite) {
+            packetColor = ACTION_COLORS.TOOL_RESULT;
+            shouldShowPacket = true;
+        } else if (isTrigger) {
+            packetColor = ACTION_COLORS.TRIGGER;
+            shouldShowPacket = true;
+        } else if (isResponse) {
+            packetColor = ACTION_COLORS.RESPONSE;
+            shouldShowPacket = true;
         }
-    } else if (isTrigger) {
-        // User -> Brain
-        const dx = finalBrainX - layout.USER_NODE_X;
-        const dy = finalBrainY - layout.USER_NODE_Y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        const unitX = dx / distance;
-        const unitY = dy / distance;
-
-        const userEdgeX = layout.USER_NODE_X + unitX * layout.USER_RADIUS;
-        const userEdgeY = layout.USER_NODE_Y + unitY * layout.USER_RADIUS;
-        const brainEdgeX = finalBrainX - unitX * layout.BRAIN_RADIUS;
-        const brainEdgeY = finalBrainY - unitY * layout.BRAIN_RADIUS;
-
-        packetStartX = userEdgeX;
-        packetStartY = userEdgeY;
-        packetEndX = brainEdgeX;
-        packetEndY = brainEdgeY;
-    } else if (isResponse) {
-        // Brain -> User
-        const dx = layout.USER_NODE_X - finalBrainX;
-        const dy = layout.USER_NODE_Y - finalBrainY;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        const unitX = dx / distance;
-        const unitY = dy / distance;
-
-        const brainEdgeX = finalBrainX + unitX * layout.BRAIN_RADIUS;
-        const brainEdgeY = finalBrainY + unitY * layout.BRAIN_RADIUS;
-        const userEdgeX = layout.USER_NODE_X - unitX * layout.USER_RADIUS;
-        const userEdgeY = layout.USER_NODE_Y - unitY * layout.USER_RADIUS;
-
-        packetStartX = brainEdgeX;
-        packetStartY = brainEdgeY;
-        packetEndX = userEdgeX;
-        packetEndY = userEdgeY;
     }
+
+    const bubblePos = useLogBubblePosition({
+        activeSegment,
+        brainX: finalBrainX,
+        brainY: finalBrainY,
+        layout,
+        finalSatellitePositions,
+        packetStartX,
+        packetStartY,
+        packetEndX,
+        packetEndY,
+        packetProgress,
+        isToolCall,
+        isToolResult,
+        isTrigger,
+        isResponse,
+        hasArrived,
+        currentLog,
+        framesSinceLogStart,
+        framesSinceArrival,
+        fps,
+        width
+    });
 
     return (
         <div style={{ flex: 1, backgroundColor: '#000', position: 'relative', overflow: 'hidden' }}>
@@ -200,53 +197,14 @@ export const AgentSystem: React.FC = () => {
                 />
 
                 {/* Data Packet Animation */}
-                {activeSatellite && isToolCall && !hasArrived && (
+                {shouldShowPacket && (
                     <DataPacket
                         startX={packetStartX}
                         startY={packetStartY}
                         endX={packetEndX}
                         endY={packetEndY}
                         progress={packetProgress}
-                        color={ACTION_COLORS.TOOL_CALL}
-                        width={layout.PACKET_WIDTH}
-                        height={layout.PACKET_HEIGHT}
-                    />
-                )}
-
-                {activeSatellite && isToolResult && !hasArrived && (
-                    <DataPacket
-                        startX={packetStartX}
-                        startY={packetStartY}
-                        endX={packetEndX}
-                        endY={packetEndY}
-                        progress={packetProgress}
-                        color={ACTION_COLORS.TOOL_RESULT}
-                        width={layout.PACKET_WIDTH}
-                        height={layout.PACKET_HEIGHT}
-                    />
-                )}
-
-                {isTrigger && !hasArrived && (
-                    <DataPacket
-                        startX={packetStartX}
-                        startY={packetStartY}
-                        endX={packetEndX}
-                        endY={packetEndY}
-                        progress={packetProgress}
-                        color={ACTION_COLORS.TRIGGER}
-                        width={layout.PACKET_WIDTH}
-                        height={layout.PACKET_HEIGHT}
-                    />
-                )}
-
-                {isResponse && !hasArrived && (
-                    <DataPacket
-                        startX={packetStartX}
-                        startY={packetStartY}
-                        endX={packetEndX}
-                        endY={packetEndY}
-                        progress={packetProgress}
-                        color={ACTION_COLORS.RESPONSE}
+                        color={packetColor}
                         width={layout.PACKET_WIDTH}
                         height={layout.PACKET_HEIGHT}
                     />
@@ -277,114 +235,8 @@ export const AgentSystem: React.FC = () => {
                         content={activeSegment.content}
                         type={activeSegment.type}
                         scale={layout.SCALE_FACTOR}
-                        x={
-                            (() => {
-                                // Helper to get Node Anchor
-                                const getNodeAnchor = (nodeName: string) => {
-                                    if (nodeName === 'BRAIN') return { x: finalBrainX, y: finalBrainY - (85 * layout.SCALE_FACTOR) };
-                                    if (nodeName === 'USER') return { x: layout.USER_NODE_X, y: layout.USER_NODE_Y - (55 * layout.SCALE_FACTOR) };
-                                    const sat = finalSatellitePositions.find(s => `SAT-${s.tool}` === nodeName);
-                                    return { x: sat?.x || finalBrainX, y: (sat?.y || finalBrainY) - (45 * layout.SCALE_FACTOR) };
-                                };
-
-                                const packetX = packetStartX + (packetEndX - packetStartX) * packetProgress;
-                                const packetY = (packetStartY + (packetEndY - packetStartY) * packetProgress) - (45 * layout.SCALE_FACTOR);
-
-                                const targetNodeAnchor = getNodeAnchor(activeSegment.node);
-
-                                // DEPARTURE PHASE (Moving from Source Node to Packet)
-                                if ((isToolCall || isToolResult || isTrigger || isResponse) && !hasArrived) {
-                                    // Determine Source Node for Departure
-                                    let sourceNodeName = 'BRAIN';
-                                    if (isToolResult) sourceNodeName = `SAT-${currentLog?.tool}`;
-                                    else if (isTrigger) sourceNodeName = 'USER';
-                                    else if (isResponse) sourceNodeName = 'BRAIN';
-
-                                    const sourceAnchor = getNodeAnchor(sourceNodeName === 'BRAIN' ? 'BRAIN' : sourceNodeName); // Helper handles 'BRAIN' vs 'SAT-...'
-
-                                    // Calculate distance from Source Anchor to Packet Start Position (approximate travel distance for the "catch up")
-                                    // Packet Start Anchor:
-                                    const packetStartAnchorX = packetStartX;
-                                    const packetStartAnchorY = packetStartY - (45 * layout.SCALE_FACTOR);
-
-                                    const dist = Math.sqrt(Math.pow(packetStartAnchorX - sourceAnchor.x, 2) + Math.pow(packetStartAnchorY - sourceAnchor.y, 2));
-                                    const duration = getTransitDuration(dist, fps, width);
-
-                                    const progress = interpolate(framesSinceLogStart, [0, duration], [0, 1], { extrapolateRight: 'clamp' });
-
-                                    // Interpolate X and Y
-                                    const currentX = sourceAnchor.x + (packetX - sourceAnchor.x) * progress;
-                                    return currentX;
-                                }
-
-                                // ARRIVAL PHASE (Moving from Packet to Dest Node)
-                                if ((isToolCall || isToolResult || isTrigger || isResponse) && hasArrived) {
-                                    // Packet End Anchor
-                                    const packetEndAnchorX = packetEndX;
-                                    // const packetEndAnchorY = packetEndY - (45 * layout.SCALE_FACTOR);
-
-                                    const dist = Math.sqrt(Math.pow(targetNodeAnchor.x - packetEndAnchorX, 2) + Math.pow(targetNodeAnchor.y - (packetEndY - (45 * layout.SCALE_FACTOR)), 2));
-                                    const duration = getTransitDuration(dist, fps, width);
-
-                                    const progress = interpolate(framesSinceArrival, [0, duration], [0, 1], { extrapolateRight: 'clamp' });
-
-                                    return packetEndX + (targetNodeAnchor.x - packetEndX) * progress;
-                                }
-
-                                return targetNodeAnchor.x;
-                            })()
-                        }
-                        y={
-                            (() => {
-                                // Helper to get Node Anchor (Duplicated for Y prop scope)
-                                const getNodeAnchor = (nodeName: string) => {
-                                    if (nodeName === 'BRAIN') return { x: finalBrainX, y: finalBrainY - (85 * layout.SCALE_FACTOR) };
-                                    if (nodeName === 'USER') return { x: layout.USER_NODE_X, y: layout.USER_NODE_Y - (55 * layout.SCALE_FACTOR) };
-                                    const sat = finalSatellitePositions.find(s => `SAT-${s.tool}` === nodeName);
-                                    return { x: sat?.x || finalBrainX, y: (sat?.y || finalBrainY) - (45 * layout.SCALE_FACTOR) };
-                                };
-
-                                const packetY = (packetStartY + (packetEndY - packetStartY) * packetProgress) - (45 * layout.SCALE_FACTOR);
-                                const targetNodeAnchor = getNodeAnchor(activeSegment.node);
-
-                                // DEPARTURE PHASE
-                                if ((isToolCall || isToolResult || isTrigger || isResponse) && !hasArrived) {
-                                    let sourceNodeName = 'BRAIN';
-                                    if (isToolResult) sourceNodeName = `SAT-${currentLog?.tool}`;
-                                    else if (isTrigger) sourceNodeName = 'USER';
-                                    else if (isResponse) sourceNodeName = 'BRAIN';
-
-                                    const sourceAnchor = getNodeAnchor(sourceNodeName === 'BRAIN' ? 'BRAIN' : sourceNodeName);
-
-                                    const packetStartAnchorX = packetStartX;
-                                    const packetStartAnchorY = packetStartY - (45 * layout.SCALE_FACTOR);
-
-                                    // Same distance calc
-                                    const dist = Math.sqrt(Math.pow(packetStartAnchorX - sourceAnchor.x, 2) + Math.pow(packetStartAnchorY - sourceAnchor.y, 2));
-                                    const duration = getTransitDuration(dist, fps, width);
-
-                                    const progress = interpolate(framesSinceLogStart, [0, duration], [0, 1], { extrapolateRight: 'clamp' });
-
-                                    return sourceAnchor.y + (packetY - sourceAnchor.y) * progress;
-                                }
-
-                                // ARRIVAL PHASE
-                                if ((isToolCall || isToolResult || isTrigger || isResponse) && hasArrived) {
-                                    const packetEndAnchorX = packetEndX;
-                                    const packetEndAnchorY = packetEndY - (45 * layout.SCALE_FACTOR);
-
-                                    // Same distance calc
-                                    const dist = Math.sqrt(Math.pow(targetNodeAnchor.x - packetEndAnchorX, 2) + Math.pow(targetNodeAnchor.y - packetEndAnchorY, 2));
-                                    const duration = getTransitDuration(dist, fps, width);
-
-                                    const progress = interpolate(framesSinceArrival, [0, duration], [0, 1], { extrapolateRight: 'clamp' });
-
-                                    return packetEndAnchorY + (targetNodeAnchor.y - packetEndAnchorY) * progress;
-                                }
-
-                                return targetNodeAnchor.y;
-                            })()
-                        }
+                        x={bubblePos.x}
+                        y={bubblePos.y}
                     />
                 )}
             </div>

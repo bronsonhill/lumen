@@ -39,6 +39,8 @@ export const getConfig = (width: number, height: number, fps: number) => {
     };
 };
 
+export type LayoutConfig = ReturnType<typeof getConfig>['LAYOUT'];
+
 // Helper for packet speed calculation to ensure consistent travel time regardless of Res/FPS
 export const getTransitDuration = (distance: number, fps: number, width: number) => {
     // Desired speed: Traverse 50% of screen width in 1.5 seconds? 
