@@ -1,63 +1,88 @@
 [
     {
-        "timestamp": 100,
+        "timestamp": 1000,
         "type": "TRIGGER",
-        "content": "User input: 'Research solar system agents'"
-    },
-    {
-        "timestamp": 200,
-        "type": "REASONING",
-        "content": "Analyzing user request for agent research..."
-    },
-    {
-        "timestamp": 500,
-        "type": "TOOL_CALL",
-        "tool": "GoogleSearch",
-        "content": "Searching for solar system agents...",
-        "status": "active"
+        "content": "User: Research solar system agents architecture"
     },
     {
         "timestamp": 1200,
-        "type": "TOOL_RESULT",
-        "tool": "GoogleSearch",
-        "status": "success",
-        "content": "Found 500 results for solar system agents."
-    },
-    {
-        "timestamp": 1250,
         "type": "REASONING",
-        "content": "Processing search results..."
-    },
-    {
-        "timestamp": 1500,
-        "type": "TOOL_CALL",
-        "tool": "Database",
-        "content": "Saving solar system agent records...",
-        "status": "active"
+        "content": "Decomposing request into subtasks..."
     },
     {
         "timestamp": 2000,
-        "type": "TOOL_RESULT",
-        "tool": "Database",
-        "status": "success",
-        "content": "Saved 5 records."
-    },
-    {
-        "timestamp": 2200,
-        "type": "REASONING",
-        "content": "Summarizing findings..."
-    },
-    {
-        "timestamp": 3000,
         "type": "TOOL_CALL",
-        "tool": "Calculator",
+        "tool": "Search",
+        "content": "Searching 'solar system agent architectures'",
         "status": "active"
     },
     {
-        "timestamp": 3200,
+        "timestamp": 5000,
+        "type": "TOOL_RESULT",
+        "tool": "Search",
+        "status": "success",
+        "content": "Found 15 relevant papers and articles."
+    },
+    {
+        "timestamp": 5200,
+        "type": "REASONING",
+        "content": "Analyzing search results for implementation details..."
+    },
+    {
+        "timestamp": 6000,
+        "type": "TOOL_CALL",
+        "tool": "GitHub",
+        "content": "Search repos: 'solar system multi-agent'",
+        "status": "active"
+    },
+    {
+        "timestamp": 8500,
+        "type": "TOOL_RESULT",
+        "tool": "GitHub",
+        "status": "success",
+        "content": "Found 3 popular open source projects."
+    },
+    {
+        "timestamp": 8800,
+        "type": "REASONING",
+        "content": "Synthesizing architectural patterns..."
+    },
+    {
+        "timestamp": 9500,
+        "type": "TOOL_CALL",
+        "tool": "Database",
+        "content": "Store research notes on 'Agent Orbits'",
+        "status": "active"
+    },
+    {
+        "timestamp": 10000,
+        "type": "TOOL_RESULT",
+        "tool": "Database",
+        "status": "success",
+        "content": "Notes saved successfully."
+    },
+    {
+        "timestamp": 10500,
+        "type": "TOOL_CALL",
+        "tool": "Calculator",
+        "content": "Estimate compute costs for 5 agents",
+        "status": "active"
+    },
+    {
+        "timestamp": 11000,
         "type": "TOOL_RESULT",
         "tool": "Calculator",
         "status": "success",
-        "content": "Calculation complete."
+        "content": "Cost estimate: $0.45/hour"
+    },
+    {
+        "timestamp": 11500,
+        "type": "REASONING",
+        "content": "Finalizing report for user..."
+    },
+    {
+        "timestamp": 12000,
+        "type": "TRIGGER",
+        "content": "Here is the research on Solar System Agents."
     }
 ]

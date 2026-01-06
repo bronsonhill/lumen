@@ -5,7 +5,7 @@ import { LogEntry } from '../types';
 import logsData from '../logs.json';
 import { CentralBrain } from './CentralBrain';
 import { Satellite } from './Satellite';
-import { LogOverlay } from './LogOverlay';
+import { LogBubble } from './LogBubble';
 import { DataPacket } from './DataPacket';
 import { ACTION_COLORS } from '../constants';
 
@@ -102,111 +102,135 @@ export const AgentSystem: React.FC = () => {
 
     return (
         <div style={{ flex: 1, backgroundColor: '#000', position: 'relative', overflow: 'hidden' }}>
-            {/* Background Stars */}
             <div style={{
-                position: 'absolute',
                 width: '100%',
                 height: '100%',
-                background: 'radial-gradient(ellipse at bottom, #1b2735 0%, #090a0f 100%)',
-                zIndex: 0
-            }} />
-
-            {/* Connecting Lines (Rendered first to be behind) */}
-            <svg style={{ position: 'absolute', width: '100%', height: '100%', pointerEvents: 'none', zIndex: 1 }}>
-                {satellitePositions.map((sat) => {
-                    return (
-                        <line
-                            key={`line-${sat.tool}`}
-                            x1={brainX}
-                            y1={brainY}
-                            x2={sat.x}
-                            y2={sat.y}
-                            stroke="#555"
-                            strokeWidth={2}
-                            strokeOpacity={0.6}
-                            strokeDasharray="5,5"
-                        />
-                    );
-                })}
-            </svg>
-
-            <div style={{
-                zIndex: 2,
-                position: 'absolute',
-                left: brainX - (width / 2),
-                top: brainY - (height / 2),
-                width: width,
-                height: height,
-                pointerEvents: 'none'
+                transform: 'scale(1.2)',
+                transformOrigin: 'center center',
             }}>
-                <CentralBrain
-                    currentType={(isToolResult && !hasArrived) ? 'TOOL_CALL' : currentLog.type}
-                    // Brain Active Logic:
-                    // If TOOL_RESULT: Active only after arrival.
-                    // If TOOL_CALL: Active immediately (sending).
-                    // If REASONING/TRIGGER: Active.
-                    // If ERROR: Not active (red pulsing? handled in component).
-                    // Let's stick to user request: "Brain lights up... vice versa" implies reaction on receipt.
-                    // But Brain is the sender for TOOL_CALL.
-                    isActive={
-                        currentLog.type === 'ERROR' ? false : true
-                    }
-                />
+                {/* Background Stars */}
+                <div style={{
+                    position: 'absolute',
+                    width: '100%',
+                    height: '100%',
+                    background: 'radial-gradient(ellipse at bottom, #1b2735 0%, #090a0f 100%)',
+                    zIndex: 0
+                }} />
+
+                {/* Connecting Lines (Rendered first to be behind) */}
+                <svg style={{ position: 'absolute', width: '100%', height: '100%', pointerEvents: 'none', zIndex: 1 }}>
+                    {satellitePositions.map((sat) => {
+                        return (
+                            <line
+                                key={`line-${sat.tool}`}
+                                x1={brainX}
+                                y1={brainY}
+                                x2={sat.x}
+                                y2={sat.y}
+                                stroke="#555"
+                                strokeWidth={2}
+                                strokeOpacity={0.6}
+                                strokeDasharray="5,5"
+                            />
+                        );
+                    })}
+                </svg>
+
+                <div style={{
+                    zIndex: 2,
+                    position: 'absolute',
+                    left: brainX - (width / 2),
+                    top: brainY - (height / 2),
+                    width: width,
+                    height: height,
+                    pointerEvents: 'none'
+                }}>
+                    <CentralBrain
+                        currentType={(isToolResult && !hasArrived) ? 'TOOL_CALL' : currentLog.type}
+                        // Brain Active Logic:
+                        // If TOOL_RESULT: Active only after arrival.
+                        // If TOOL_CALL: Active immediately (sending).
+                        // If REASONING/TRIGGER: Active.
+                        // If ERROR: Not active (red pulsing? handled in component).
+                        // Let's stick to user request: "Brain lights up... vice versa" implies reaction on receipt.
+                        // But Brain is the sender for TOOL_CALL.
+                        isActive={
+                            currentLog.type === 'ERROR' ? false : true
+                        }
+                    />
+                </div>
+
+                {/* Data Packet Animation */}
+                {activeSatellite && isToolCall && packetProgress < 1 && (
+                    <DataPacket
+                        startX={packetStartX}
+                        startY={packetStartY}
+                        endX={packetEndX}
+                        endY={packetEndY}
+                        progress={packetProgress}
+                        color={ACTION_COLORS.TOOL_CALL}
+                    />
+                )}
+
+                {activeSatellite && isToolResult && packetProgress < 1 && (
+                    <DataPacket
+                        startX={packetStartX}
+                        startY={packetStartY}
+                        endX={packetEndX}
+                        endY={packetEndY}
+                        progress={packetProgress}
+                        color={ACTION_COLORS.TOOL_RESULT}
+                    />
+                )}
+
+                {satellitePositions.map((sat) => (
+                    <Satellite
+                        key={sat.tool}
+                        toolName={sat.tool}
+                        // Satellite Active Logic:
+                        // Only active if it's the target tool AND
+                        // (If TOOL_CALL: Only active after packet arrives)
+                        // (If TOOL_RESULT: Active while sending? Or inactive? 
+                        // Usually "lights up once dot meets node" refers to receiving. Assuming it stays lit during processing or sending result?)
+                        // Let's assume:
+                        // TOOL_CALL: Lit after arrival.
+                        // TOOL_RESULT: Lit during transit (sender)? Or Lit entire time? 
+                        // Let's keep it simple: It lights up when it is involved.
+                        // Refined: "Satellite node should light up once the dot meets the node"
+                        // So for TOOL_CALL, light up IF hasArrived.
+                        isActive={
+                            sat.isActive && (
+                                isToolCall ? hasArrived :
+                                    false // TOOL_RESULT: Inactive immediately upon sending
+                            )
+                        }
+                        x={sat.x}
+                        y={sat.y}
+                    />
+                ))}
+
+                {/* Log Bubble (In-Place) */}
+                {currentLog.content && (
+                    <LogBubble
+                        content={currentLog.content}
+                        type={currentLog.type}
+                        x={
+                            activeSatellite ? (
+                                isToolCall ? (hasArrived ? activeSatellite.x : brainX) :
+                                    isToolResult ? (hasArrived ? brainX : activeSatellite.x) :
+                                        brainX
+                            ) : brainX
+                        }
+                        y={
+                            activeSatellite ? (
+                                isToolCall ? (hasArrived ? activeSatellite.y - 45 : brainY - 85) :
+                                    isToolResult ? (hasArrived ? brainY - 85 : activeSatellite.y - 45) :
+                                        brainY - 85
+                            ) : brainY - 85
+                        }
+                    />
+                )}
             </div>
-
-            {/* Data Packet Animation */}
-            {activeSatellite && isToolCall && packetProgress < 1 && (
-                <DataPacket
-                    startX={packetStartX}
-                    startY={packetStartY}
-                    endX={packetEndX}
-                    endY={packetEndY}
-                    progress={packetProgress}
-                    color={ACTION_COLORS.TOOL_CALL}
-                />
-            )}
-
-            {activeSatellite && isToolResult && packetProgress < 1 && (
-                <DataPacket
-                    startX={packetStartX}
-                    startY={packetStartY}
-                    endX={packetEndX}
-                    endY={packetEndY}
-                    progress={packetProgress}
-                    color={ACTION_COLORS.TOOL_RESULT}
-                />
-            )}
-
-            {satellitePositions.map((sat) => (
-                <Satellite
-                    key={sat.tool}
-                    toolName={sat.tool}
-                    // Satellite Active Logic:
-                    // Only active if it's the target tool AND
-                    // (If TOOL_CALL: Only active after packet arrives)
-                    // (If TOOL_RESULT: Active while sending? Or inactive? 
-                    // Usually "lights up once dot meets node" refers to receiving. Assuming it stays lit during processing or sending result?)
-                    // Let's assume:
-                    // TOOL_CALL: Lit after arrival.
-                    // TOOL_RESULT: Lit during transit (sender)? Or Lit entire time? 
-                    // Let's keep it simple: It lights up when it is involved.
-                    // Refined: "Satellite node should light up once the dot meets the node"
-                    // So for TOOL_CALL, light up IF hasArrived.
-                    isActive={
-                        sat.isActive && (
-                            isToolCall ? hasArrived :
-                                false // TOOL_RESULT: Inactive immediately upon sending
-                        )
-                    }
-                    x={sat.x}
-                    y={sat.y}
-                />
-            ))}
-
-            <LogOverlay
-                content={currentLog.content || ''}
-                type={currentLog.type}
-            />
         </div>
     );
 };
