@@ -25,9 +25,9 @@ export const getConfig = (width: number, height: number, fps: number) => {
             USER_NODE_X: width * 0.15, // 300/1920
             USER_NODE_Y: height * 0.25, // 250/1080 roughly
 
-            BRAIN_RADIUS: 75 * scaleFactor,
-            SATELLITE_RADIUS: 30 * scaleFactor,
-            USER_RADIUS: 40 * scaleFactor,
+            BRAIN_RADIUS: 90 * scaleFactor,
+            SATELLITE_RADIUS: 40 * scaleFactor,
+            USER_RADIUS: 50 * scaleFactor,
 
             // Data Packet Scaled Dimensions
             PACKET_WIDTH: 24 * scaleFactor,

@@ -18,10 +18,12 @@ export const Satellite: React.FC<SatelliteProps & { radius: number }> = ({
 }) => {
     // Active State Animation
     // Static size increase when active
-    const scale = isActive ? 1.05 : 1.0;
+    const scale = isActive ? 1.1 : 1.0;
     const activeColor = ACTION_COLORS.TOOL_CALL;
-    const color = isActive ? activeColor : '#555';
-    const glow = isActive ? `0 0 20px ${activeColor}` : 'none';
+    const color = isActive ? activeColor : '#4b5563'; // Slate 600
+    const glow = isActive
+        ? `0 0 20px ${activeColor}, inset 0 0 10px ${activeColor}40`
+        : '0 0 5px rgba(0,0,0,0.5)';
 
     return (
         <div
@@ -44,8 +46,8 @@ export const Satellite: React.FC<SatelliteProps & { radius: number }> = ({
                     width: radius * 2,
                     height: radius * 2,
                     borderRadius: '50%',
-                    backgroundColor: '#1a1a1a',
-                    border: `3px solid ${color}`,
+                    background: `radial-gradient(circle at 30% 30%, #3e3e3e, #1a1a1a)`,
+                    border: `2px solid ${color}`,
                     boxShadow: glow,
                     display: 'flex',
                     alignItems: 'center',
@@ -70,11 +72,16 @@ export const Satellite: React.FC<SatelliteProps & { radius: number }> = ({
                     top: radius + 10, // Below the circle
                     left: '50%',
                     transform: 'translateX(-50%)',
-                    color: 'white',
-                    fontSize: 16 * (radius / 30),
-                    fontFamily: 'sans-serif',
-                    textShadow: '0 2px 4px rgba(0,0,0,0.5)',
+                    color: 'rgba(255,255,255,0.8)',
+                    fontSize: 14 * (radius / 30),
+                    fontFamily: 'system-ui, -apple-system, sans-serif',
+                    fontWeight: 500,
+                    textShadow: '0 2px 4px rgba(0,0,0,0.8)',
                     whiteSpace: 'nowrap',
+                    background: 'rgba(0,0,0,0.6)',
+                    padding: '2px 8px',
+                    borderRadius: '4px',
+                    backdropFilter: 'blur(4px)',
                 }}
             >
                 {toolName}

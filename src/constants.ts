@@ -1,13 +1,13 @@
 import { LogType } from './types';
 
 export const ACTION_COLORS: Record<LogType | 'DEFAULT', string> = {
-    REASONING: 'rgba(247, 246, 240, 1)', // Blue
-    TOOL_CALL: 'rgba(100, 134, 189, 1)', // Yellow/Orange 
-    TOOL_RESULT: 'rgba(100, 134, 189, 1)', // Green
-    ERROR: '#dc3545', // Red 
-    TRIGGER: 'rgba(240, 103, 132, 1)', // Pink
-    RESPONSE: 'rgba(240, 103, 132, 1)', // Pink (Same as trigger)
-    DEFAULT: '#6c757d', // Grey
+    REASONING: '#22d3ee', // Cyan
+    TOOL_CALL: '#fbbf24', // Amber
+    TOOL_RESULT: '#34d399', // Emerald
+    ERROR: '#fb7185', // Rose
+    TRIGGER: '#a78bfa', // Violet
+    RESPONSE: '#e879f9', // Fuchsia
+    DEFAULT: '#94a3b8', // Slate
 };
 
 export const BUBBLE_OFFSETS = {

@@ -21,8 +21,10 @@ export const CentralBrain: React.FC<CentralBrainProps & { radius: number }> = ({
     const scale = isActive ? pulse : 1;
 
     // Dim glow if waiting (Grey) to avoid "active" look
-    const glowRadius = isWaiting ? '15px' : '30px';
-    const glow = isActive ? `0 0 ${glowRadius} ${baseColor}` : 'none';
+    const glowRadius = isWaiting ? '15px' : '40px';
+    const glow = isActive
+        ? `0 0 ${glowRadius} ${baseColor}, inset 0 0 20px ${baseColor}40`
+        : '0 0 10px rgba(0,0,0,0.5)';
 
     return (
         <div
@@ -34,8 +36,8 @@ export const CentralBrain: React.FC<CentralBrainProps & { radius: number }> = ({
                 width: radius * 2,
                 height: radius * 2,
                 borderRadius: '50%',
-                backgroundColor: '#222',
-                border: `5px solid ${baseColor}`,
+                background: `radial-gradient(circle at 30% 30%, #3e3e3e, #1a1a1a)`,
+                border: `2px solid ${baseColor}`,
                 boxShadow: glow,
                 display: 'flex',
                 alignItems: 'center',
@@ -44,7 +46,14 @@ export const CentralBrain: React.FC<CentralBrainProps & { radius: number }> = ({
                 transition: 'border-color 0.5s ease-out, box-shadow 0.5s ease-out',
             }}
         >
-            <div style={{ color: 'white', fontSize: 18 * (radius / 75), fontFamily: 'monospace', textAlign: 'center' }}>
+            <div style={{
+                color: 'rgba(255,255,255,0.9)',
+                fontSize: 18 * (radius / 75),
+                fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                fontWeight: 600,
+                letterSpacing: '0.05em',
+                textAlign: 'center'
+            }}>
                 LEAD<br />AGENT
             </div>
         </div>

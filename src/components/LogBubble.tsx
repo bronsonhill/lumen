@@ -56,25 +56,39 @@ export const LogBubble: React.FC<LogBubbleProps & { scale?: number }> = ({ conte
                 top: y,
                 transform: `translate(-50%, -100%) scale(${scale})`, // Centered horizontally, positioned above the point
                 maxWidth: 400 * globalScale,
-                backgroundColor: 'rgba(0, 0, 0, 0.85)',
-                border: `${2 * globalScale}px solid ${color}`,
-                borderRadius: 25 * globalScale,
-                padding: `${20 * globalScale}px ${30 * globalScale}px`,
-                color: 'white',
-                fontFamily: 'monospace',
-                fontSize: 17 * globalScale,
-                boxShadow: `0 0 ${15 * globalScale}px ${color}40`, // 40 is hex opacity
+                background: 'rgba(20, 20, 20, 0.85)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+                border: `${1 * globalScale}px solid ${color}80`, // Slight transparency on border
+                borderRadius: 16 * globalScale,
+                padding: `${16 * globalScale}px ${24 * globalScale}px`,
+                color: '#e2e8f0', // Slate 200
+                fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+                fontSize: 15 * globalScale,
+                lineHeight: 1.5,
+                boxShadow: `0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px ${color}40`,
                 zIndex: 50,
                 pointerEvents: 'none',
             }}
         >
             <div style={{
                 color: color,
-                fontSize: 15 * globalScale,
-                fontWeight: 'bold',
+                fontSize: 12 * globalScale,
+                fontWeight: 700,
+                letterSpacing: '0.05em',
                 textTransform: 'uppercase',
-                marginBottom: 4 * globalScale
+                marginBottom: 6 * globalScale,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
             }}>
+                <span style={{
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    backgroundColor: color,
+                    boxShadow: `0 0 8px ${color}`
+                }} />
                 {type}
             </div>
             <div style={{
