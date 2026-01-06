@@ -8,15 +8,19 @@ interface LogBubbleProps {
     type: LogType;
     x: number;
     y: number;
+    startFrame?: number; // Optional, defaults to 0 (or component mount time if we used pure React state, but here we use Remotion frame)
 }
 
-export const LogBubble: React.FC<LogBubbleProps> = ({ content, type, x, y }) => {
+export const LogBubble: React.FC<LogBubbleProps> = ({ content, type, x, y, startFrame = 0 }) => {
     const frame = useCurrentFrame();
     const { fps } = useVideoConfig();
 
     // Scale animation (pop-in)
+    // We want the animation to start at startFrame.
+    const animationFrame = Math.max(0, frame - startFrame);
+
     const scale = spring({
-        frame,
+        frame: animationFrame,
         fps,
         config: {
             damping: 20,

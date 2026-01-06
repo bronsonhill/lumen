@@ -16,6 +16,90 @@ export const AgentSystem: React.FC = () => {
     const { fps, width, height } = useVideoConfig();
 
     const framesPerLog = 120;
+    const transitDuration = 0.3; // 30% of time for travel
+    const transitFrames = framesPerLog * transitDuration;
+
+    // Pre-calculate bubble segments to handle animation coalescing
+    const bubbleSegments = React.useMemo(() => {
+        interface RawSegment {
+            start: number;
+            end: number;
+            node: string;
+            content: string;
+            type: import('../types').LogType;
+        }
+
+        const segments: RawSegment[] = [];
+
+        logs.forEach((log, index) => {
+            const logStart = index * framesPerLog;
+            const logEnd = (index + 1) * framesPerLog;
+
+            if (log.type === 'TOOL_CALL') {
+                // Phase 1: Brain (Source)
+                segments.push({
+                    start: logStart,
+                    end: logStart + transitFrames,
+                    node: 'BRAIN',
+                    content: log.content || '',
+                    type: log.type
+                });
+                // Phase 2: Satellite (Dest)
+                segments.push({
+                    start: logStart + transitFrames,
+                    end: logEnd,
+                    node: `SAT-${log.tool}`,
+                    content: log.content || '',
+                    type: log.type
+                });
+            } else if (log.type === 'TOOL_RESULT') {
+                // Phase 1: Satellite (Source)
+                segments.push({
+                    start: logStart,
+                    end: logStart + transitFrames,
+                    node: `SAT-${log.tool}`,
+                    content: log.content || '',
+                    type: log.type
+                });
+                // Phase 2: Brain (Dest)
+                segments.push({
+                    start: logStart + transitFrames,
+                    end: logEnd,
+                    node: 'BRAIN',
+                    content: log.content || '',
+                    type: log.type
+                });
+            } else {
+                // BRAIN ONLY
+                segments.push({
+                    start: logStart,
+                    end: logEnd,
+                    node: 'BRAIN',
+                    content: log.content || '',
+                    type: log.type
+                });
+            }
+        });
+
+        // Coalesce segments
+        const coalesced: (RawSegment & { coalescedStart: number })[] = [];
+        let currentGroupStart = -1;
+        let lastNode = '';
+
+        segments.forEach(seg => {
+            // If new node or first segment, reset coalesced start
+            if (seg.node !== lastNode) {
+                currentGroupStart = seg.start;
+                lastNode = seg.node;
+            }
+            coalesced.push({ ...seg, coalescedStart: currentGroupStart });
+        });
+
+        return coalesced;
+    }, []);
+
+    const activeSegment = bubbleSegments.find(s => frame >= s.start && frame < s.end);
+
     const activeLogIndex = Math.floor(frame / framesPerLog);
     const currentLog = logs[Math.min(activeLogIndex, logs.length - 1)];
 
@@ -49,7 +133,6 @@ export const AgentSystem: React.FC = () => {
 
     // Animation Timing Logic
     const progressInLog = (frame % framesPerLog) / framesPerLog;
-    const transitDuration = 0.3; // 30% of time for travel
 
     // Normalized progress for the packet (0 to 1) during the transit phase
     // If progressInLog is 0..0.3, packetProgress goes 0..1
@@ -210,23 +293,20 @@ export const AgentSystem: React.FC = () => {
                 ))}
 
                 {/* Log Bubble (In-Place) */}
-                {currentLog.content && (
+                {activeSegment && activeSegment.content && (
                     <LogBubble
-                        content={currentLog.content}
-                        type={currentLog.type}
+                        key={activeSegment.coalescedStart} // Remount if coalesced sequence changes, though startFrame handling also does this
+                        startFrame={activeSegment.coalescedStart}
+                        content={activeSegment.content}
+                        type={activeSegment.type}
                         x={
-                            activeSatellite ? (
-                                isToolCall ? (hasArrived ? activeSatellite.x : brainX) :
-                                    isToolResult ? (hasArrived ? brainX : activeSatellite.x) :
-                                        brainX
-                            ) : brainX
+                            activeSegment.node === 'BRAIN' ? brainX :
+                                // For satellites, find position
+                                (satellitePositions.find(s => `SAT-${s.tool}` === activeSegment.node)?.x || brainX)
                         }
                         y={
-                            activeSatellite ? (
-                                isToolCall ? (hasArrived ? activeSatellite.y - 45 : brainY - 85) :
-                                    isToolResult ? (hasArrived ? brainY - 85 : activeSatellite.y - 45) :
-                                        brainY - 85
-                            ) : brainY - 85
+                            activeSegment.node === 'BRAIN' ? brainY - 85 :
+                                (satellitePositions.find(s => `SAT-${s.tool}` === activeSegment.node)?.y || brainY) - 45
                         }
                     />
                 )}
