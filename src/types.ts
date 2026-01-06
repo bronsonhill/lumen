@@ -1,4 +1,4 @@
-export type LogType = 'REASONING' | 'TOOL_CALL' | 'TOOL_RESULT' | 'ERROR' | 'TRIGGER';
+export type LogType = 'REASONING' | 'TOOL_CALL' | 'TOOL_RESULT' | 'ERROR' | 'TRIGGER' | 'RESPONSE';
 
 export interface LogEntry {
     timestamp: number;

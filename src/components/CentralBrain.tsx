@@ -8,7 +8,7 @@ interface CentralBrainProps {
     isActive: boolean;
 }
 
-export const CentralBrain: React.FC<CentralBrainProps> = ({ currentType, isActive }) => {
+export const CentralBrain: React.FC<CentralBrainProps & { radius: number }> = ({ currentType, isActive, radius }) => {
     const frame = useCurrentFrame();
 
     const isWaiting = currentType === 'TOOL_CALL' || currentType === 'TRIGGER';
@@ -31,8 +31,8 @@ export const CentralBrain: React.FC<CentralBrainProps> = ({ currentType, isActiv
                 left: '50%',
                 top: '50%',
                 transform: `translate(-50%, -50%) scale(${scale})`,
-                width: 150,
-                height: 150,
+                width: radius * 2,
+                height: radius * 2,
                 borderRadius: '50%',
                 backgroundColor: '#222',
                 border: `5px solid ${baseColor}`,
@@ -44,7 +44,7 @@ export const CentralBrain: React.FC<CentralBrainProps> = ({ currentType, isActiv
                 transition: 'border-color 0.5s ease-out, box-shadow 0.5s ease-out',
             }}
         >
-            <div style={{ color: 'white', fontSize: 18, fontFamily: 'monospace', textAlign: 'center' }}>
+            <div style={{ color: 'white', fontSize: 18 * (radius / 75), fontFamily: 'monospace', textAlign: 'center' }}>
                 LEAD<br />AGENT
             </div>
         </div>

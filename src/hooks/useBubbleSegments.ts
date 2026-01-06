@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { LogEntry, LogType } from '../types';
-import { CONFIG } from '../config';
+import { useVideoConfig } from 'remotion';
+import { getConfig, getTransitDuration } from '../config';
 
 interface RawSegment {
     start: number;
@@ -18,12 +19,18 @@ export const useBubbleSegments = (
     tools: string[],
     getStableNodeCoords: (nodeName: string, tools: string[]) => { x: number; y: number }
 ) => {
+    const { width, height, fps } = useVideoConfig(); // useVideoConfig can be used here if hook is called inside composition
+    // Wait, hooks are called inside components, so this is valid.
+
+    const config = getConfig(width, height, fps);
+    const { FRAMES_PER_LOG } = config.TIMING;
+
     return useMemo(() => {
         const segments: RawSegment[] = [];
 
         logs.forEach((log, index) => {
-            const logStart = index * CONFIG.FRAMES_PER_LOG;
-            const logEnd = (index + 1) * CONFIG.FRAMES_PER_LOG;
+            const logStart = index * FRAMES_PER_LOG;
+            const logEnd = (index + 1) * FRAMES_PER_LOG;
 
             // Calculate Distance & Transit Time
             let startNode = '';
@@ -32,13 +39,15 @@ export const useBubbleSegments = (
             if (log.type === 'TOOL_CALL') { startNode = 'BRAIN'; endNode = `SAT-${log.tool}`; }
             else if (log.type === 'TOOL_RESULT') { startNode = `SAT-${log.tool}`; endNode = 'BRAIN'; }
             else if (log.type === 'TRIGGER') { startNode = 'USER'; endNode = 'BRAIN'; }
+            else if (log.type === 'RESPONSE') { startNode = 'BRAIN'; endNode = 'USER'; }
             else { startNode = 'BRAIN'; endNode = 'BRAIN'; }
 
             const p1 = getStableNodeCoords(startNode, tools);
             const p2 = getStableNodeCoords(endNode, tools);
             const dist = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
 
-            const transitFrames = Math.max(15, Math.ceil(dist / CONFIG.PACKET_SPEED));
+            // Use the new helper for consistent speed
+            const transitFrames = getTransitDuration(dist, fps, width);
 
             if (log.type === 'TOOL_CALL') {
                 segments.push({
@@ -97,6 +106,26 @@ export const useBubbleSegments = (
                     logIndex: index,
                     transitDurationFrames: transitFrames
                 });
+            } else if (log.type === 'RESPONSE') {
+                // Brain -> User
+                segments.push({
+                    start: logStart,
+                    end: logStart + transitFrames,
+                    node: 'BRAIN',
+                    content: log.content || '',
+                    type: log.type,
+                    logIndex: index,
+                    transitDurationFrames: transitFrames
+                });
+                segments.push({
+                    start: logStart + transitFrames,
+                    end: logEnd,
+                    node: 'USER',
+                    content: log.content || '',
+                    type: log.type,
+                    logIndex: index,
+                    transitDurationFrames: transitFrames
+                });
             } else {
                 segments.push({
                     start: logStart,
@@ -128,5 +157,5 @@ export const useBubbleSegments = (
         });
 
         return coalesced;
-    }, [logs, tools, getStableNodeCoords]);
+    }, [logs, tools, getStableNodeCoords, FRAMES_PER_LOG, fps, width]);
 };

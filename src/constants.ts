@@ -6,5 +6,6 @@ export const ACTION_COLORS: Record<LogType | 'DEFAULT', string> = {
     TOOL_RESULT: '#007bff', // Green
     ERROR: '#dc3545', // Red
     TRIGGER: '#e83e8c', // Pink
+    RESPONSE: '#e83e8c', // Pink (Same as trigger)
     DEFAULT: '#6c757d', // Grey
 };

@@ -10,13 +10,15 @@ interface DataPacketProps {
     color?: string;
 }
 
-export const DataPacket: React.FC<DataPacketProps> = ({
+export const DataPacket: React.FC<DataPacketProps & { width: number, height: number }> = ({
     startX,
     startY,
     endX,
     endY,
     progress,
     color,
+    width,
+    height,
 }) => {
     if (progress < 0 || progress > 1) return null;
 
@@ -33,10 +35,10 @@ export const DataPacket: React.FC<DataPacketProps> = ({
                 left: currentX,
                 top: currentY,
                 transform: `translate(-50%, -50%) rotate(${angle}rad)`,
-                width: 24,
-                height: 8,
+                width: width,
+                height: height,
                 backgroundColor: color || '#00e5ff',
-                borderRadius: 4,
+                borderRadius: height / 2,
                 boxShadow: `0 0 10px ${color || '#00e5ff'}, 0 0 20px ${color || '#00e5ff'}`,
                 zIndex: 15,
             }}

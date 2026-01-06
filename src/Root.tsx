@@ -14,8 +14,8 @@ export const RemotionRoot: React.FC = () => {
                 component={AgentSystem}
                 durationInFrames={durationInFrames}
                 fps={30}
-                width={1920}
-                height={1080}
+                width={2560}
+                height={1440}
             />
         </>
     );

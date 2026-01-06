@@ -1,19 +1,21 @@
 import { useVideoConfig } from 'remotion';
 import { noise2D } from '@remotion/noise';
-import { CONFIG } from '../config';
+import { getConfig } from '../config';
 import { LogEntry } from '../types';
 
 export const useNodePositions = (frame: number, tools: string[], currentLog: LogEntry | null) => {
-    const { width, height } = useVideoConfig();
+    const { width, height, fps } = useVideoConfig();
+    const config = getConfig(width, height, fps);
+    const layout = config.LAYOUT;
 
-    const centerX = width / 2;
-    const centerY = height / 2;
-    const radius = CONFIG.LAYOUT.RADIUS;
+    const centerX = layout.CENTER_X;
+    const centerY = layout.CENTER_Y;
+    const radius = layout.RADIUS;
 
     // Helper to get coordinates for a node (Stable)
     const getStableNodeCoords = (nodeName: string, activeTools: string[]) => {
         if (nodeName === 'BRAIN') return { x: centerX, y: centerY };
-        if (nodeName === 'USER') return { x: CONFIG.LAYOUT.USER_NODE_X, y: CONFIG.LAYOUT.USER_NODE_Y };
+        if (nodeName === 'USER') return { x: layout.USER_NODE_X, y: layout.USER_NODE_Y };
         if (nodeName.startsWith('SAT-')) {
             const toolName = nodeName.replace('SAT-', '');
             const index = activeTools.indexOf(toolName);
@@ -28,7 +30,7 @@ export const useNodePositions = (frame: number, tools: string[], currentLog: Log
     };
 
     // Apply noise to Brain Position
-    const brainNoiseX = noise2D('brain-x', frame * 0.003, 0) * 30;
+    const brainNoiseX = noise2D('brain-x', frame * 0.003, 0) * 30; // 30 could also be scaled? Let's leave for now.
     const brainNoiseY = noise2D('brain-y', frame * 0.003, 0) * 30;
     const brainX = centerX + brainNoiseX;
     const brainY = centerY + brainNoiseY;

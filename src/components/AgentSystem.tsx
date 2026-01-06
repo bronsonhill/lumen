@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { useCurrentFrame, useVideoConfig } from 'remotion';
+import { useCurrentFrame, useVideoConfig, interpolate, spring } from 'remotion';
 import { LogEntry } from '../types';
 import logsData from '../logs.json';
 import { CentralBrain } from './CentralBrain';
@@ -8,7 +8,7 @@ import { LogBubble } from './LogBubble';
 import { DataPacket } from './DataPacket';
 import { UserNode } from './UserNode';
 import { ACTION_COLORS } from '../constants';
-import { CONFIG } from '../config';
+import { getConfig, getTransitDuration } from '../config';
 import { useBubbleSegments } from '../hooks/useBubbleSegments';
 import { useNodePositions } from '../hooks/useNodePositions';
 import { useAgentAnimation } from '../hooks/useAgentAnimation';
@@ -17,11 +17,16 @@ const logs = logsData as LogEntry[];
 
 export const AgentSystem: React.FC = () => {
     const frame = useCurrentFrame();
-    const { width, height } = useVideoConfig();
+    const { width, height, fps } = useVideoConfig();
+
+    // Get Dynamic Configuration
+    const config = getConfig(width, height, fps);
+    const { START_DELAY_FRAMES, FRAMES_PER_LOG } = config.TIMING;
+    const layout = config.LAYOUT;
 
     // Effective frame for log logic (starts after delay)
     // If negative, we are in the intro/idle phase
-    const effectiveFrame = frame - CONFIG.START_DELAY;
+    const effectiveFrame = frame - START_DELAY_FRAMES;
 
     // Identify all unique tools from logs
     const tools = useMemo(() =>
@@ -30,21 +35,13 @@ export const AgentSystem: React.FC = () => {
     );
 
     // 1. Calculate Agent Positions
-    // We pass null for currentLog initially to get base positions, or we could pass the active log
-    // Ideally we want positions to update based on activity if needed, but for now they are static + noise
+    // We pass null for currentLog initially to get base positions
     const {
         brainX,
         brainY,
         satellitePositions,
         getStableNodeCoords
-    } = useNodePositions(frame, tools, null); // We'll update interactions later or pass currentLog if needed for scale?
-    // Actually useNodePositions *does* use currentLog for isActive. So we need to fetch currentLog first or do a 2-pass.
-    // However, the circular dependency is minor:
-    // Animation depends on Frame.
-    // Positions depend on Frame (noise).
-    // Active State depends on Log (Frame).
-    // Let's get the animation state first? No, we need segments for animation state.
-    // Segments use stable coords.
+    } = useNodePositions(frame, tools, null);
 
     // 1. Get Segments (Static based on Logs and Tools)
     const bubbleSegments = useBubbleSegments(logs, tools, getStableNodeCoords);
@@ -55,16 +52,15 @@ export const AgentSystem: React.FC = () => {
         activeSegment,
         packetProgress,
         hasArrived,
+        framesSinceArrival,
+        framesSinceLogStart,
         isToolCall,
         isToolResult,
-        isTrigger
+        isTrigger,
+        isResponse
     } = useAgentAnimation(effectiveFrame, logs, bubbleSegments);
 
     // 3. Re-calculate Positions with Active State (Correct Way)
-    // We call useNodePositions again? No, that's wasteful and might double noise calc (though deterministic).
-    // Better: Split position calculation.
-    // Let's just use the one hook and pass the currentLog we just found.
-    // BUT currentLog depends on effectiveFrame.
     const {
         brainX: finalBrainX,
         brainY: finalBrainY,
@@ -85,10 +81,10 @@ export const AgentSystem: React.FC = () => {
         const unitX = dx / distance;
         const unitY = dy / distance;
 
-        const brainEdgeX = finalBrainX + unitX * CONFIG.LAYOUT.BRAIN_RADIUS;
-        const brainEdgeY = finalBrainY + unitY * CONFIG.LAYOUT.BRAIN_RADIUS;
-        const satEdgeX = activeSatellite.x - unitX * CONFIG.LAYOUT.SATELLITE_RADIUS;
-        const satEdgeY = activeSatellite.y - unitY * CONFIG.LAYOUT.SATELLITE_RADIUS;
+        const brainEdgeX = finalBrainX + unitX * layout.BRAIN_RADIUS;
+        const brainEdgeY = finalBrainY + unitY * layout.BRAIN_RADIUS;
+        const satEdgeX = activeSatellite.x - unitX * layout.SATELLITE_RADIUS;
+        const satEdgeY = activeSatellite.y - unitY * layout.SATELLITE_RADIUS;
 
         if (isToolCall) {
             packetStartX = brainEdgeX;
@@ -103,21 +99,38 @@ export const AgentSystem: React.FC = () => {
         }
     } else if (isTrigger) {
         // User -> Brain
-        const dx = finalBrainX - CONFIG.LAYOUT.USER_NODE_X;
-        const dy = finalBrainY - CONFIG.LAYOUT.USER_NODE_Y;
+        const dx = finalBrainX - layout.USER_NODE_X;
+        const dy = finalBrainY - layout.USER_NODE_Y;
         const distance = Math.sqrt(dx * dx + dy * dy);
         const unitX = dx / distance;
         const unitY = dy / distance;
 
-        const userEdgeX = CONFIG.LAYOUT.USER_NODE_X + unitX * CONFIG.LAYOUT.USER_RADIUS;
-        const userEdgeY = CONFIG.LAYOUT.USER_NODE_Y + unitY * CONFIG.LAYOUT.USER_RADIUS;
-        const brainEdgeX = finalBrainX - unitX * CONFIG.LAYOUT.BRAIN_RADIUS;
-        const brainEdgeY = finalBrainY - unitY * CONFIG.LAYOUT.BRAIN_RADIUS;
+        const userEdgeX = layout.USER_NODE_X + unitX * layout.USER_RADIUS;
+        const userEdgeY = layout.USER_NODE_Y + unitY * layout.USER_RADIUS;
+        const brainEdgeX = finalBrainX - unitX * layout.BRAIN_RADIUS;
+        const brainEdgeY = finalBrainY - unitY * layout.BRAIN_RADIUS;
 
         packetStartX = userEdgeX;
         packetStartY = userEdgeY;
         packetEndX = brainEdgeX;
         packetEndY = brainEdgeY;
+    } else if (isResponse) {
+        // Brain -> User
+        const dx = layout.USER_NODE_X - finalBrainX;
+        const dy = layout.USER_NODE_Y - finalBrainY;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        const unitX = dx / distance;
+        const unitY = dy / distance;
+
+        const brainEdgeX = finalBrainX + unitX * layout.BRAIN_RADIUS;
+        const brainEdgeY = finalBrainY + unitY * layout.BRAIN_RADIUS;
+        const userEdgeX = layout.USER_NODE_X - unitX * layout.USER_RADIUS;
+        const userEdgeY = layout.USER_NODE_Y - unitY * layout.USER_RADIUS;
+
+        packetStartX = brainEdgeX;
+        packetStartY = brainEdgeY;
+        packetEndX = userEdgeX;
+        packetEndY = userEdgeY;
     }
 
     return (
@@ -171,16 +184,19 @@ export const AgentSystem: React.FC = () => {
                             !currentLog ? false : // IDLE
                                 currentLog.type === 'ERROR' ? false :
                                     (isTrigger && !hasArrived) ? false :
-                                        true
+                                        (isResponse && !hasArrived) ? true : // Active while sending response
+                                            true
                         }
+                        radius={layout.BRAIN_RADIUS}
                     />
                 </div>
 
                 {/* User Node */}
                 <UserNode
-                    isActive={isTrigger}
-                    x={CONFIG.LAYOUT.USER_NODE_X}
-                    y={CONFIG.LAYOUT.USER_NODE_Y}
+                    isActive={isTrigger || (isResponse && hasArrived)}
+                    x={layout.USER_NODE_X}
+                    y={layout.USER_NODE_Y}
+                    radius={layout.USER_RADIUS}
                 />
 
                 {/* Data Packet Animation */}
@@ -192,6 +208,8 @@ export const AgentSystem: React.FC = () => {
                         endY={packetEndY}
                         progress={packetProgress}
                         color={ACTION_COLORS.TOOL_CALL}
+                        width={layout.PACKET_WIDTH}
+                        height={layout.PACKET_HEIGHT}
                     />
                 )}
 
@@ -203,6 +221,8 @@ export const AgentSystem: React.FC = () => {
                         endY={packetEndY}
                         progress={packetProgress}
                         color={ACTION_COLORS.TOOL_RESULT}
+                        width={layout.PACKET_WIDTH}
+                        height={layout.PACKET_HEIGHT}
                     />
                 )}
 
@@ -214,6 +234,21 @@ export const AgentSystem: React.FC = () => {
                         endY={packetEndY}
                         progress={packetProgress}
                         color={ACTION_COLORS.TRIGGER}
+                        width={layout.PACKET_WIDTH}
+                        height={layout.PACKET_HEIGHT}
+                    />
+                )}
+
+                {isResponse && !hasArrived && (
+                    <DataPacket
+                        startX={packetStartX}
+                        startY={packetStartY}
+                        endX={packetEndX}
+                        endY={packetEndY}
+                        progress={packetProgress}
+                        color={ACTION_COLORS.RESPONSE}
+                        width={layout.PACKET_WIDTH}
+                        height={layout.PACKET_HEIGHT}
                     />
                 )}
 
@@ -229,6 +264,7 @@ export const AgentSystem: React.FC = () => {
                         }
                         x={sat.x}
                         y={sat.y}
+                        radius={layout.SATELLITE_RADIUS}
                     />
                 ))}
 
@@ -236,35 +272,118 @@ export const AgentSystem: React.FC = () => {
                 {activeSegment && activeSegment.content && (
                     <LogBubble
                         key={activeSegment.coalescedStart} // Keyed by Group Start (persists across merges)
-                        startFrame={activeSegment.coalescedStart + CONFIG.START_DELAY} // Offset Pop-in time by Delay
-                        textStartFrame={activeSegment.logIndex * CONFIG.FRAMES_PER_LOG + CONFIG.START_DELAY} // Offset Text Start
+                        startFrame={activeSegment.coalescedStart + START_DELAY_FRAMES} // Offset Pop-in time by Delay
+                        textStartFrame={activeSegment.logIndex * FRAMES_PER_LOG + START_DELAY_FRAMES} // Offset Text Start
                         content={activeSegment.content}
                         type={activeSegment.type}
+                        scale={layout.SCALE_FACTOR}
                         x={
-                            // Anchoring Logic:
-                            // If in transit AND (TOOL_CALL or TOOL_RESULT or TRIGGER), use packet coordinates.
-                            // Else use Node coordinates.
+                            (() => {
+                                // Helper to get Node Anchor
+                                const getNodeAnchor = (nodeName: string) => {
+                                    if (nodeName === 'BRAIN') return { x: finalBrainX, y: finalBrainY - (85 * layout.SCALE_FACTOR) };
+                                    if (nodeName === 'USER') return { x: layout.USER_NODE_X, y: layout.USER_NODE_Y - (55 * layout.SCALE_FACTOR) };
+                                    const sat = finalSatellitePositions.find(s => `SAT-${s.tool}` === nodeName);
+                                    return { x: sat?.x || finalBrainX, y: (sat?.y || finalBrainY) - (45 * layout.SCALE_FACTOR) };
+                                };
 
-                            ((isToolCall || isToolResult || isTrigger) && !hasArrived) ? (
-                                // Packet X Calculation
-                                packetStartX + (packetEndX - packetStartX) * packetProgress
-                            ) : (
-                                // Standard Node Anchoring
-                                activeSegment.node === 'BRAIN' ? finalBrainX :
-                                    activeSegment.node === 'USER' ? CONFIG.LAYOUT.USER_NODE_X :
-                                        (finalSatellitePositions.find(s => `SAT-${s.tool}` === activeSegment.node)?.x || finalBrainX)
-                            )
+                                const packetX = packetStartX + (packetEndX - packetStartX) * packetProgress;
+                                const packetY = (packetStartY + (packetEndY - packetStartY) * packetProgress) - (45 * layout.SCALE_FACTOR);
+
+                                const targetNodeAnchor = getNodeAnchor(activeSegment.node);
+
+                                // DEPARTURE PHASE (Moving from Source Node to Packet)
+                                if ((isToolCall || isToolResult || isTrigger || isResponse) && !hasArrived) {
+                                    // Determine Source Node for Departure
+                                    let sourceNodeName = 'BRAIN';
+                                    if (isToolResult) sourceNodeName = `SAT-${currentLog?.tool}`;
+                                    else if (isTrigger) sourceNodeName = 'USER';
+                                    else if (isResponse) sourceNodeName = 'BRAIN';
+
+                                    const sourceAnchor = getNodeAnchor(sourceNodeName === 'BRAIN' ? 'BRAIN' : sourceNodeName); // Helper handles 'BRAIN' vs 'SAT-...'
+
+                                    // Calculate distance from Source Anchor to Packet Start Position (approximate travel distance for the "catch up")
+                                    // Packet Start Anchor:
+                                    const packetStartAnchorX = packetStartX;
+                                    const packetStartAnchorY = packetStartY - (45 * layout.SCALE_FACTOR);
+
+                                    const dist = Math.sqrt(Math.pow(packetStartAnchorX - sourceAnchor.x, 2) + Math.pow(packetStartAnchorY - sourceAnchor.y, 2));
+                                    const duration = getTransitDuration(dist, fps, width);
+
+                                    const progress = interpolate(framesSinceLogStart, [0, duration], [0, 1], { extrapolateRight: 'clamp' });
+
+                                    // Interpolate X and Y
+                                    const currentX = sourceAnchor.x + (packetX - sourceAnchor.x) * progress;
+                                    return currentX;
+                                }
+
+                                // ARRIVAL PHASE (Moving from Packet to Dest Node)
+                                if ((isToolCall || isToolResult || isTrigger || isResponse) && hasArrived) {
+                                    // Packet End Anchor
+                                    const packetEndAnchorX = packetEndX;
+                                    // const packetEndAnchorY = packetEndY - (45 * layout.SCALE_FACTOR);
+
+                                    const dist = Math.sqrt(Math.pow(targetNodeAnchor.x - packetEndAnchorX, 2) + Math.pow(targetNodeAnchor.y - (packetEndY - (45 * layout.SCALE_FACTOR)), 2));
+                                    const duration = getTransitDuration(dist, fps, width);
+
+                                    const progress = interpolate(framesSinceArrival, [0, duration], [0, 1], { extrapolateRight: 'clamp' });
+
+                                    return packetEndX + (targetNodeAnchor.x - packetEndX) * progress;
+                                }
+
+                                return targetNodeAnchor.x;
+                            })()
                         }
                         y={
-                            ((isToolCall || isToolResult || isTrigger) && !hasArrived) ? (
-                                // Packet Y Calculation - offset slightly above the packet
-                                (packetStartY + (packetEndY - packetStartY) * packetProgress) - 45
-                            ) : (
-                                // Standard Node Anchoring
-                                activeSegment.node === 'BRAIN' ? finalBrainY - 85 :
-                                    activeSegment.node === 'USER' ? CONFIG.LAYOUT.USER_NODE_Y - 55 :
-                                        (finalSatellitePositions.find(s => `SAT-${s.tool}` === activeSegment.node)?.y || finalBrainY) - 45
-                            )
+                            (() => {
+                                // Helper to get Node Anchor (Duplicated for Y prop scope)
+                                const getNodeAnchor = (nodeName: string) => {
+                                    if (nodeName === 'BRAIN') return { x: finalBrainX, y: finalBrainY - (85 * layout.SCALE_FACTOR) };
+                                    if (nodeName === 'USER') return { x: layout.USER_NODE_X, y: layout.USER_NODE_Y - (55 * layout.SCALE_FACTOR) };
+                                    const sat = finalSatellitePositions.find(s => `SAT-${s.tool}` === nodeName);
+                                    return { x: sat?.x || finalBrainX, y: (sat?.y || finalBrainY) - (45 * layout.SCALE_FACTOR) };
+                                };
+
+                                const packetY = (packetStartY + (packetEndY - packetStartY) * packetProgress) - (45 * layout.SCALE_FACTOR);
+                                const targetNodeAnchor = getNodeAnchor(activeSegment.node);
+
+                                // DEPARTURE PHASE
+                                if ((isToolCall || isToolResult || isTrigger || isResponse) && !hasArrived) {
+                                    let sourceNodeName = 'BRAIN';
+                                    if (isToolResult) sourceNodeName = `SAT-${currentLog?.tool}`;
+                                    else if (isTrigger) sourceNodeName = 'USER';
+                                    else if (isResponse) sourceNodeName = 'BRAIN';
+
+                                    const sourceAnchor = getNodeAnchor(sourceNodeName === 'BRAIN' ? 'BRAIN' : sourceNodeName);
+
+                                    const packetStartAnchorX = packetStartX;
+                                    const packetStartAnchorY = packetStartY - (45 * layout.SCALE_FACTOR);
+
+                                    // Same distance calc
+                                    const dist = Math.sqrt(Math.pow(packetStartAnchorX - sourceAnchor.x, 2) + Math.pow(packetStartAnchorY - sourceAnchor.y, 2));
+                                    const duration = getTransitDuration(dist, fps, width);
+
+                                    const progress = interpolate(framesSinceLogStart, [0, duration], [0, 1], { extrapolateRight: 'clamp' });
+
+                                    return sourceAnchor.y + (packetY - sourceAnchor.y) * progress;
+                                }
+
+                                // ARRIVAL PHASE
+                                if ((isToolCall || isToolResult || isTrigger || isResponse) && hasArrived) {
+                                    const packetEndAnchorX = packetEndX;
+                                    const packetEndAnchorY = packetEndY - (45 * layout.SCALE_FACTOR);
+
+                                    // Same distance calc
+                                    const dist = Math.sqrt(Math.pow(targetNodeAnchor.x - packetEndAnchorX, 2) + Math.pow(targetNodeAnchor.y - packetEndAnchorY, 2));
+                                    const duration = getTransitDuration(dist, fps, width);
+
+                                    const progress = interpolate(framesSinceArrival, [0, duration], [0, 1], { extrapolateRight: 'clamp' });
+
+                                    return packetEndAnchorY + (targetNodeAnchor.y - packetEndAnchorY) * progress;
+                                }
+
+                                return targetNodeAnchor.y;
+                            })()
                         }
                     />
                 )}
@@ -272,4 +391,5 @@ export const AgentSystem: React.FC = () => {
         </div>
     );
 };
+
 

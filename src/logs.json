@@ -82,7 +82,7 @@
     },
     {
         "timestamp": 12000,
-        "type": "TRIGGER",
+        "type": "RESPONSE",
         "content": "Here is the research on Solar System Agents."
     }
 ]

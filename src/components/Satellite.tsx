@@ -9,11 +9,12 @@ interface SatelliteProps {
     y: number;
 }
 
-export const Satellite: React.FC<SatelliteProps> = ({
+export const Satellite: React.FC<SatelliteProps & { radius: number }> = ({
     toolName,
     isActive,
     x,
     y,
+    radius,
 }) => {
     // Active State Animation
     // Static size increase when active
@@ -40,8 +41,8 @@ export const Satellite: React.FC<SatelliteProps> = ({
             {/* Circle Icon */}
             <div
                 style={{
-                    width: 60,
-                    height: 60,
+                    width: radius * 2,
+                    height: radius * 2,
                     borderRadius: '50%',
                     backgroundColor: '#1a1a1a',
                     border: `3px solid ${color}`,
@@ -50,7 +51,7 @@ export const Satellite: React.FC<SatelliteProps> = ({
                     alignItems: 'center',
                     justifyContent: 'center',
                     color: 'white',
-                    fontSize: 24,
+                    fontSize: 24 * (radius / 30),
                     fontWeight: 'bold',
                     transform: `translate(-50%, -50%) scale(${scale})`,
                     transition: 'border-color 0.5s ease-out, box-shadow 0.5s ease-out',
@@ -66,11 +67,11 @@ export const Satellite: React.FC<SatelliteProps> = ({
             <div
                 style={{
                     position: 'absolute',
-                    top: 40, // Below the circle (radius 30 + gap 10)
+                    top: radius + 10, // Below the circle
                     left: '50%',
                     transform: 'translateX(-50%)',
                     color: 'white',
-                    fontSize: 16,
+                    fontSize: 16 * (radius / 30),
                     fontFamily: 'sans-serif',
                     textShadow: '0 2px 4px rgba(0,0,0,0.5)',
                     whiteSpace: 'nowrap',

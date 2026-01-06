@@ -7,7 +7,7 @@ interface UserNodeProps {
     y: number;
 }
 
-export const UserNode: React.FC<UserNodeProps> = ({ isActive, x, y }) => {
+export const UserNode: React.FC<UserNodeProps & { radius: number }> = ({ isActive, x, y, radius }) => {
     // Active State Animation
     // Static size increase when active
     const scale = isActive ? 1.1 : 1.0;
@@ -33,8 +33,8 @@ export const UserNode: React.FC<UserNodeProps> = ({ isActive, x, y }) => {
             {/* Hexagon/Square Icon for distinction */}
             <div
                 style={{
-                    width: 80,
-                    height: 80,
+                    width: radius * 2,
+                    height: radius * 2,
                     borderRadius: '15%', // Rounded square for Mission Control
                     backgroundColor: '#1a1a1a',
                     border: `3px solid ${color}`,
@@ -43,7 +43,7 @@ export const UserNode: React.FC<UserNodeProps> = ({ isActive, x, y }) => {
                     alignItems: 'center',
                     justifyContent: 'center',
                     color: 'white',
-                    fontSize: 18,
+                    fontSize: 18 * (radius / 40),
                     fontWeight: 'bold',
                     textAlign: 'center',
                     transform: `translate(-50%, -50%) scale(${scale})`,

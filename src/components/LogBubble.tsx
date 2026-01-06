@@ -12,7 +12,7 @@ interface LogBubbleProps {
     textStartFrame?: number; // Optional, defaults to startFrame if not provided
 }
 
-export const LogBubble: React.FC<LogBubbleProps> = ({ content, type, x, y, startFrame = 0, textStartFrame }) => {
+export const LogBubble: React.FC<LogBubbleProps & { scale?: number }> = ({ content, type, x, y, startFrame = 0, textStartFrame, scale: globalScale = 1 }) => {
     const frame = useCurrentFrame();
     const { fps } = useVideoConfig();
 
@@ -55,25 +55,25 @@ export const LogBubble: React.FC<LogBubbleProps> = ({ content, type, x, y, start
                 left: x,
                 top: y,
                 transform: `translate(-50%, -100%) scale(${scale})`, // Centered horizontally, positioned above the point
-                maxWidth: 400,
+                maxWidth: 400 * globalScale,
                 backgroundColor: 'rgba(0, 0, 0, 0.85)',
-                border: `2px solid ${color}`,
-                borderRadius: 25,
-                padding: '20px 30px',
+                border: `${2 * globalScale}px solid ${color}`,
+                borderRadius: 25 * globalScale,
+                padding: `${20 * globalScale}px ${30 * globalScale}px`,
                 color: 'white',
                 fontFamily: 'monospace',
-                fontSize: 17,
-                boxShadow: `0 0 15px ${color}40`, // 40 is hex opacity
+                fontSize: 17 * globalScale,
+                boxShadow: `0 0 ${15 * globalScale}px ${color}40`, // 40 is hex opacity
                 zIndex: 50,
                 pointerEvents: 'none',
             }}
         >
             <div style={{
                 color: color,
-                fontSize: 15,
+                fontSize: 15 * globalScale,
                 fontWeight: 'bold',
                 textTransform: 'uppercase',
-                marginBottom: 4
+                marginBottom: 4 * globalScale
             }}>
                 {type}
             </div>
@@ -89,14 +89,14 @@ export const LogBubble: React.FC<LogBubbleProps> = ({ content, type, x, y, start
             {/* Little triangle pointing down */}
             <div style={{
                 position: 'absolute',
-                bottom: -8,
+                bottom: -8 * globalScale,
                 left: '50%',
                 transform: 'translateX(-50%)',
                 width: 0,
                 height: 0,
-                borderLeft: '8px solid transparent',
-                borderRight: '8px solid transparent',
-                borderTop: `8px solid ${color}`,
+                borderLeft: `${8 * globalScale}px solid transparent`,
+                borderRight: `${8 * globalScale}px solid transparent`,
+                borderTop: `${8 * globalScale}px solid ${color}`,
             }} />
         </div>
     );
