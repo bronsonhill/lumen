@@ -1,0 +1,29 @@
+{
+  "name": "agent-visualization",
+  "version": "1.0.0",
+  "description": "AI Agent Solar System Visualization",
+  "scripts": {
+    "start": "remotion preview src/index.ts",
+    "build": "remotion render src/index.ts AgentVisualization out.mp4",
+    "upgrade": "remotion upgrade",
+    "test": "eslint src --ext ts,tsx && tsc"
+  },
+  "dependencies": {
+    "@remotion/noise": "4.0.0",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "remotion": "4.0.0",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@remotion/cli": "4.0.0",
+    "@remotion/eslint-config": "4.0.0",
+    "@types/react": "^18.0.0",
+    "@types/react-dom": "^18.0.0",
+    "@types/web": "^0.0.125",
+    "eslint": "^8.56.0",
+    "eslint-plugin-react": "^7.33.2",
+    "prettier": "^3.2.4",
+    "typescript": "^5.3.3"
+  }
+}
