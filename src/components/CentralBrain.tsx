@@ -16,9 +16,8 @@ export const CentralBrain: React.FC<CentralBrainProps & { radius: number }> = ({
 
 
 
-    // Pulse animation using sine wave
-    const pulse = Math.sin(frame * 0.05) * 0.02 + 1; // 0.9 to 1.1 scale
-    const scale = isActive ? pulse : 1;
+    // Static scale when active
+    const scale = isActive ? 1.05 : 1;
 
     // Dim glow if waiting (Grey) to avoid "active" look
     const glowRadius = isWaiting ? '15px' : '40px';
@@ -54,7 +53,7 @@ export const CentralBrain: React.FC<CentralBrainProps & { radius: number }> = ({
                 letterSpacing: '0.05em',
                 textAlign: 'center'
             }}>
-                LEAD<br />AGENT
+                RESEARCH <br />AGENT
             </div>
         </div>
     );

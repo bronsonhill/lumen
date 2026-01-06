@@ -64,7 +64,7 @@ export const LogBubble: React.FC<LogBubbleProps & { scale?: number }> = ({ conte
                 padding: `${16 * globalScale}px ${24 * globalScale}px`,
                 color: '#e2e8f0', // Slate 200
                 fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
-                fontSize: 15 * globalScale,
+                fontSize: 18 * globalScale,
                 lineHeight: 1.5,
                 boxShadow: `0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px ${color}40`,
                 zIndex: 50,
@@ -73,7 +73,7 @@ export const LogBubble: React.FC<LogBubbleProps & { scale?: number }> = ({ conte
         >
             <div style={{
                 color: color,
-                fontSize: 12 * globalScale,
+                fontSize: 14 * globalScale,
                 fontWeight: 700,
                 letterSpacing: '0.05em',
                 textTransform: 'uppercase',

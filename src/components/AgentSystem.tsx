@@ -227,7 +227,7 @@ export const AgentSystem: React.FC = () => {
                 ))}
 
                 {/* Log Bubble (In-Place) */}
-                {activeSegment && activeSegment.content && (
+                {config.SHOW_LOGS && activeSegment && activeSegment.content && (
                     <LogBubble
                         key={activeSegment.coalescedStart} // Keyed by Group Start (persists across merges)
                         startFrame={activeSegment.coalescedStart + START_DELAY_FRAMES} // Offset Pop-in time by Delay

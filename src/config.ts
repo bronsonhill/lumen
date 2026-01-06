@@ -5,6 +5,7 @@ export const getConfig = (width: number, height: number, fps: number) => {
     const scaleFactor = width / BASE_WIDTH;
 
     return {
+        SHOW_LOGS: false, // Toggle this to false to hide log bubbles
         TIMING: {
             PACKET_SPEED: 8 * scaleFactor, // Pixels per frame (scales with res) - Wait, speed should be time based.
             // Better: Speed = Distance / Duration.
